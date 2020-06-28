@@ -1,12 +1,13 @@
 const axios = require("axios");
 const cheerio = require('cheerio');
 const ExcelJS = require('exceljs');
+const fs = require('fs');
 
 const MAX_PAGE = 1598;
 
 const REGEX = /\d+/g;
 const MIN_COST = 1000000000;
-const MAX_RETRY = 5;
+const MAX_RETRY = 10;
 const params = {
   bid_target: "bid-result",
   aujusted_limited: 0,
@@ -87,6 +88,7 @@ const reTryGetFunc = async (func, count, index) => {
   } catch (e) {
     console.log(`Index: ${index} - Retry ${count + 1}`);
     if (count <= MAX_RETRY) {
+      await sleep(5000);
       result = await reTryGetFunc(func, count++, index);
     } else {
       throw e;
@@ -116,7 +118,7 @@ const getPageChild = (htmlContent) => {
       const dataPid = await reTryGetFunc(func, 0, index);
       data = getInfo(dataPid, url);
     } catch (e) {
-      console.log(`error ${index}`, e);
+      console.log(`error ${index}`);
     }
 
     return data;
@@ -136,15 +138,21 @@ function sleep(ms) {
 
 const init = async () => {
   let finalData = [];
+  const pageError = [];
   for (let index = 1; index <= MAX_PAGE; index++) {
     let dataOfPage = [];
-    console.log(`Start get data page: ${index}`);
-    console.time(`GET_DATA_${index}`);
-
-    dataOfPage = await startGetDataPage(index);
-    
-    console.timeEnd(`GET_DATA_${index}`);
-    console.log(`Get succes data page: ${index} - length data: ${dataOfPage.length}`);
+    try {
+      console.log(`Start get data page: ${index}`);
+      console.time(`GET_DATA_${index}`);
+  
+      dataOfPage = await startGetDataPage(index);
+      
+      console.timeEnd(`GET_DATA_${index}`);
+      console.log(`Get succes data page: ${index} - length data: ${dataOfPage.length}`);
+    } catch (e) {
+      console.log(`Get page error ${index}`);
+      pageError.push(index);
+    }
     
     finalData = [...finalData, ...dataOfPage];
     if (index % 100 === 0 || index === MAX_PAGE) {
@@ -153,6 +161,9 @@ const init = async () => {
     }
     await sleep(1000);
   }
+
+  console.log("All page error is:", pageError.length);
+  fs.writeFile("resultError.txt", pageError.join("-"));
 }
 
 const exportToExcel = async (datas, index) => {
