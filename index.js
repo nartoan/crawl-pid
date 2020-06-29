@@ -167,21 +167,22 @@ const init = async () => {
 
     console.log("All page error is:", pageError.length);
     if (pageError.length > 0) {
-        pageError.forEach(pageIndex => {
+        for (let index = 0; index < pageError.length; index++) {
+            const pageIndex = pageError[index];
             let dataOfPage = [];
             try {
                 console.log(`Start get data page again: ${pageIndex}`);
                 const func = async () => {
                     return await startGetDataPage(pageIndex);
                 }
-                dataOfPage = reTryGetFunc(func, 0, pageIndex);
+                dataOfPage = await reTryGetFunc(func, 0, pageIndex);
                 console.log(`Get succes data page: ${pageIndex} - length data: ${dataOfPage.length}`);
             } catch (e) {
                 console.log(`Get page error${pageIndex}`);
             }
     
             finalData = [...finalData, ...dataOfPage];
-        });
+        }
         exportToExcel(finalData, "error_page");
     }
 }
